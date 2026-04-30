@@ -35,25 +35,45 @@ class InverseProblemWithLatent(ABC):
         AZ_theta = np.stack([
             self.apply_operator(theta, z)
             for z in self.latent_grid
-        ])  # (K, p)
+        ])
 
         diff = Y[:, None, :] - AZ_theta[None, :, :]
         losses = np.sum(diff**2, axis=2)
 
         exponents = -losses / (2 * self.sigma**2)
 
-        # quadrature si non uniforme
+        # quadrature non uniforme
         if self.quad_weights is not None:
             if not np.allclose(self.quad_weights, self.quad_weights[0]):
                 exponents += np.log(self.quad_weights)[None, :]
 
-        # stabilisation
+        # stabilisation numérique
         exponents -= np.max(exponents, axis=1, keepdims=True)
 
         weights = np.exp(exponents)
         weights /= np.sum(weights, axis=1, keepdims=True)
 
         return weights
+
+    # ===============================
+    # Q FUNCTION (pour Armijo)
+    # ===============================
+
+    def Q(self, Y, theta):
+
+        weights = self.compute_weights(Y, theta)
+
+        AZ_theta = np.stack([
+            self.apply_operator(theta, z)
+            for z in self.latent_grid
+        ])
+
+        diff = Y[:, None, :] - AZ_theta[None, :, :]
+        losses = np.sum(diff**2, axis=2)
+
+        Q_val = -np.sum(weights * losses) / (2 * self.sigma**2)
+
+        return Q_val
 
     # ===============================
     # Gradient (GEM)
@@ -75,7 +95,7 @@ class InverseProblemWithLatent(ABC):
             for k, z in enumerate(self.latent_grid)
         ])  # (K, n, p)
 
-        weights_expanded = weights.T[:, :, None]
+        weights_expanded = weights.T[:, :, None, None]
 
         grad = np.sum(weights_expanded * A_adj_res, axis=(0, 1))
 
@@ -115,7 +135,7 @@ class InverseProblemWithLatent(ABC):
 
         M += lambda_reg * np.eye(p)
 
-        # résolution
+        # résolution stable
         try:
             theta = np.linalg.solve(M, b)
         except np.linalg.LinAlgError:

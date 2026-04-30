@@ -2,6 +2,12 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
 .env
 .venv
-README_files/
+env/
+
+.ipynb_checkpoints/
+
+*.log
+.DS_Store

@@ -1,7 +1,7 @@
 ---
 title: "EM for Inverse Problems with Latent Variables"
 author: "Niokhobaye Abdel"
-format: html
+format: gfm
 execute:
     echo: true
     warning: false
@@ -177,7 +177,7 @@ def apply_operator(self, theta, angle):
     return self._project(rotated)
 ```
 
-⚠️ L’adjoint est approximé numériquement.
+ L’adjoint est approximé numériquement.
 
 Ce problème est mal posé et nécessite une optimisation par gradient.
 
