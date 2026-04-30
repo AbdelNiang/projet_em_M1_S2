@@ -71,13 +71,30 @@ $$
 On maximise :
 
 $$
-Q(\theta) = \sum_i \sum_z q_i(z), |Y_i - A_z \theta|^2
+Q(\theta) = -\frac{1}{2\sigma^2} \sum_i \sum_z q_i(z)\,\|Y_i - A_z \theta\|^2
 $$
+
 
 Gradient :
 
 $$
 \nabla Q(\theta) = \frac{1}{\sigma^2} \sum_i \sum_z q_i(z) A_z^*(Y_i - A_z \theta)
+$$
+
+---
+
+# 3. Generalized EM (GEM)
+
+On remplace la M-step exacte par :
+
+$$
+\theta_{k+1} = \theta_k + \eta \nabla Q(\theta_k)
+$$
+
+avec Armijo pour garantir :
+
+$$
+Q(\theta_{k+1}) \ge Q(\theta_k)
 $$
 
 ---
@@ -131,6 +148,18 @@ def compute_weights(self, Y, theta):
     return weights
 ```
 
+Fonction Q:
+```python
+def Q(self, Y, theta):
+    weights = self.compute_weights(Y, theta)
+    AZ = np.stack([self.apply_operator(theta, z) for z in self.latent_grid])
+    diff = Y[:, None, :] - AZ[None, :, :]
+    losses = np.sum(diff**2, axis=2)
+    return -np.sum(weights * losses) / (2*self.sigma**2)
+```
+
+
+
 ---
 
 # 4. Cas 1 : Translation 1D
@@ -152,10 +181,10 @@ class Translation1D(InverseProblemWithLatent):
 Propriété :
 
 $$
-A_z^* A_z = I
+A_z^* A_z = I 
 $$
 
-Ce cas est bien posé et permet une résolution explicite.
+isométrique → problème bien posé
 
 ---
 
@@ -168,18 +197,50 @@ $$
 avec :
 
 $$
-P\theta(x) = \int \theta(x,y),dy
+P\theta(x) = \int \theta(x,y)\,dy
 $$
+
+---
+
+## Implémentation
 
 ```python
 def apply_operator(self, theta, angle):
     rotated = self._rotate_array(theta, angle)
-    return self._project(rotated)
+    return np.sum(rotated, axis=0)
 ```
+L'opérateur de projection fait perdre de l'information → problème inverse mal posé
 
- L’adjoint est approximé numériquement.
+Génération d'un signal de test :
+On condidére un signal 2D gaussien :
+```python
+p = 40
 
-Ce problème est mal posé et nécessite une optimisation par gradient.
+x = np.linspace(-1, 1, p)
+X, Y_grid = np.meshgrid(x, x)
+
+theta_true = np.exp(-8 * (X**2 + Y_grid**2))
+```
+Expérimentation :
+```python
+Y = generate_data(model, theta_true, n_samples=10)
+
+theta_init = np.random.randn(p, p)
+
+theta_est, history, Q_hist = em(model, Y, theta_init)
+
+plt.plot(Q_hist)
+plt.title("Convergence de Q")
+plt.xlabel("Iteration")
+plt.ylabel("Q")
+plt.show()
+```
+On observe des signaux 1D projetés($Y_i = A_{z_i} \theta$) : prjection d'une gaussienne 2D → gaussienne 1D :
+
+```python
+plt.plot(Y[0])
+plt.title("Projection observée")
+plt.show()
 
 ---
 
@@ -198,13 +259,46 @@ def generate_data(model, theta_true, n_samples):
 
     return np.array(Y)
 ```
+# Expérimentation
+  # Translation
+```python
+p = 50
+theta_true = np.exp(-50*(np.linspace(0,1,p)-0.5)**2)
 
+model = Translation1D(0.3, np.arange(-5,6))
+Y = generate_data(model, theta_true, 30)
+
+theta_init = np.random.randn(p)
+theta_est, Q_hist = em(model, Y, theta_init)
+```
+```python
+import matplotlib.pyplot as plt
+
+plt.plot(theta_true, label="true")
+plt.plot(theta_est, label="estimated")
+plt.legend()
+plt.show()
+```
+
+   # Rotation + projection
+```python
+p = 40
+theta_true = np.exp(-8*(np.random.rand(p,p)**2))
+
+# données projetées
+Y = generate_data(model, theta_true, 10)
+```
+```python
+plt.plot(Y[0])
+plt.title("Projection observée")
+plt.show()
+```
 ---
 
 # 7. Résultats expérimentaux
 
 ```python
-theta_est, _ = em_explicit(model, Y, theta_init)
+theta_est, history, Q_history = em(model, Y, theta_init)
 ```
 
 Comparaison :
@@ -234,8 +328,8 @@ Observations :
 # 9. Discussion
 
 * Cas translation : problème bien posé (isométrique)
-* Cas rotation : problème inverse mal posé
-* EM converge vers un point critique
+* Cas rotation : problème inverse mal posé,perte d'information
+* EM converge vers un point critique(un optimum local)
 
 ---
 
