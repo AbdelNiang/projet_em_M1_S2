@@ -37,7 +37,7 @@ class RotationProjection2D(InverseProblemWithLatent):
         x_rot = cos_a * self.x_flat - sin_a * self.y_flat
         y_rot = sin_a * self.x_flat + cos_a * self.y_flat
 
-        # 🔥 IMPORTANT : utiliser les axes 1D
+        #  IMPORTANT : utiliser les axes 1D
         interp = RegularGridInterpolator(
             (self.x_1d, self.x_1d),
             array_2d,
