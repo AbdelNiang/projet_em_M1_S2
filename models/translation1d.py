@@ -9,7 +9,7 @@ class Translation1D(InverseProblemWithLatent):
     def __init__(self, sigma, shifts, p):
         super().__init__(sigma, shifts)
         self.p = p
-        self.is_isometry = True  # 🔥 important pour accélérer le M-step
+        self.is_isometry = True  #  important pour accélérer le M-step
 
     def apply_operator(self, theta, z):
         shift_int = int(np.round(z))

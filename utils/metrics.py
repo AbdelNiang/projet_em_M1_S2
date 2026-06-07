@@ -3,9 +3,9 @@ import numpy as np
 def translation_invariant_error(theta_est, theta_true):
     """
     Calcule :
-        min_a || τ_a(theta_est) - theta_true ||
+        min_a || T_a(theta_est) - theta_true ||²
 
-    où τ_a est une translation circulaire
+    où T_a est une translation circulaire
     """
 
     p = len(theta_true)
